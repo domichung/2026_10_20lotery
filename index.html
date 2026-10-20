@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>轉一下！隨機輪盤</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f2eb;color:#263b34;font-family:system-ui,"Microsoft JhengHei",sans-serif}button,input{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.45}button:focus-visible,input:focus-visible{outline:3px solid #e8ae45;outline-offset:4px}.page{max-width:1080px;margin:auto;padding:42px 28px}.top{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #d6dbd0;padding-bottom:20px}.brand{font-weight:800;font-size:20px}.badge{font-size:12px;letter-spacing:2px;color:#69796d}header{margin:38px 0 30px}h1{font-size:clamp(32px,5vw,48px);letter-spacing:-2px;margin:0 0 12px}header p{color:#6b796e;margin:0;line-height:1.8}.layout{display:grid;grid-template-columns:340px 1fr;gap:28px;align-items:start}.panel{background:#fffdf8;border:1px solid #e1e4d9;border-radius:24px;padding:26px}h2{font-size:19px;margin:0 0 8px}.hint{color:#788278;font-size:13px;line-height:1.7}.entry{display:flex;gap:8px;margin-top:22px}.entry input{min-width:0;width:100%;border:1px solid #d4dcd0;border-radius:12px;padding:12px;background:white}.primary{border:0;border-radius:12px;background:#285847;color:white;padding:12px 18px;font-weight:700;white-space:nowrap}.count{display:flex;justify-content:space-between;margin:26px 0 12px;font-size:13px;color:#6d7c70}.list{list-style:none;padding:0;margin:0;display:flex;gap:8px;flex-wrap:wrap;max-height:220px;overflow:auto}.list li{background:#eef1e8;border-radius:10px;display:flex;align-items:center;max-width:100%;gap:8px;padding:7px 10px;font-size:14px}.list span{overflow-wrap:anywhere}.delete{background:none;border:0;color:#6c7a6c;padding:0 3px;font-size:19px}.empty{font-size:14px;color:#879084;padding:14px 0}.option{display:flex;align-items:flex-start;gap:10px;margin-top:28px;padding-top:22px;border-top:1px solid #e4e7de;cursor:pointer}.option input{width:18px;height:18px;accent-color:#285847;margin:3px 0}.option strong{font-size:14px}.option small{display:block;margin-top:5px;color:#788278;font-size:12px}.stage{text-align:center;padding:4px 12px}.wheel-wrap{position:relative;width:min(100%,440px);margin:auto;aspect-ratio:1}.pointer{position:absolute;z-index:2;left:50%;top:-9px;transform:translateX(-50%);width:30px;height:42px;background:#263b34;clip-path:polygon(0 0,100% 0,50% 100%)}canvas{display:block;width:100%;height:100%;filter:drop-shadow(0 12px 18px #253e2914)}.spin{margin-top:22px;width:210px;border-radius:30px;padding:15px;font-size:18px;box-shadow:0 5px 0 #193e31}.result{margin-top:26px;min-height:96px}.result small{color:#7a8679;font-size:12px;letter-spacing:2px}.result p{margin:8px 0;font-size:27px;font-weight:800;overflow-wrap:anywhere}.message{min-height:22px;color:#9b531f;font-size:13px;margin:10px 0 0}footer{text-align:center;font-size:12px;color:#8a9386;margin-top:35px}@media(max-width:740px){.page{padding:24px 18px}.layout{grid-template-columns:1fr;gap:24px}header{margin:28px 0}.panel{padding:22px}.stage{padding:0 8px}.wheel-wrap{max-width:360px}.badge{letter-spacing:0}.result{min-height:75px}}
+</style>
+</head>
+<body>
+<main class="page">
+<div class="top"><div class="brand">◒ 轉一下！</div><span class="badge">一點隨機，一點驚喜</span></div>
+<header><h1>選不出來？交給輪盤。</h1><p>加入你的選項，讓下一個驚喜自己轉出來。</p></header>
+<div class="layout">
+<section class="panel" aria-labelledby="settings-title">
+<h2 id="settings-title">放入你的選項</h2><div class="hint">吃什麼、去哪裡，或是下一個小挑戰。</div>
+<form id="entry" class="entry"><input id="item" aria-label="新增輪盤選項" placeholder="輸入一個選項…" maxlength="40" autocomplete="off"><button class="primary" id="add" type="submit">送出</button></form>
+<p id="message" class="message" role="status"></p>
+<div class="count"><span>輪盤選項</span><span id="count">0 個</span></div>
+<ul class="list" id="list" aria-label="目前選項"></ul>
+<label class="option"><input id="remove" type="checkbox"><span><strong>抽中後移除</strong><small>抽過的選項不再參加下一輪。</small></span></label>
+</section>
+<section class="stage" aria-label="隨機抽選輪盤">
+<div class="wheel-wrap"><div class="pointer" aria-hidden="true"></div><canvas id="wheel" width="880" height="880" role="img" aria-label="目前沒有選項的輪盤"></canvas></div>
+<button id="spin" class="primary spin" disabled>轉動輪盤 ↗</button>
+<div class="result" role="status" aria-live="polite"><small id="result-label">準備好迎接驚喜了嗎？</small><p id="result">先加入你的第一個選項</p></div>
+</section>
+</div>
+<footer>每個選項，都有一樣的機會。</footer>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const canvas=$('wheel'),ctx=canvas.getContext('2d');
+const colors=['#9eb8a1','#f0ce83','#b6cbd1','#e5ac91','#bdc0df','#d3dca4','#e4b9c8','#9dcac0'];
+let items=[],angle=0,busy=false;
+function draw(){
+ const n=items.length,c=440,r=414;ctx.clearRect(0,0,880,880);
+ ctx.save();ctx.translate(c,c);ctx.rotate(angle);
+ if(!n){ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fillStyle='#e4e9dd';ctx.fill();for(let i=0;i<8;i++){ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(i*Math.PI/4)*r,Math.sin(i*Math.PI/4)*r);ctx.strokeStyle='#f5f2eb';ctx.lineWidth=3;ctx.stroke()}}
+ for(let i=0;i<n;i++){let start=i*Math.PI*2/n-Math.PI/2,end=(i+1)*Math.PI*2/n-Math.PI/2;ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,r,start,end);ctx.closePath();ctx.fillStyle=colors[i%colors.length];ctx.fill();ctx.strokeStyle='#fffdf8';ctx.lineWidth=3;ctx.stroke();ctx.save();ctx.rotate((start+end)/2);ctx.textAlign='right';ctx.fillStyle='#263b34';ctx.font='bold '+(n>18?18:26)+'px system-ui';let label=items[i];while(ctx.measureText(label).width>260)label=label.slice(0,-2)+'…';ctx.fillText(label,375,9);ctx.restore()}
+ ctx.restore();ctx.beginPath();ctx.arc(c,c,53,0,Math.PI*2);ctx.fillStyle='#fffdf8';ctx.fill();ctx.lineWidth=9;ctx.strokeStyle='#263b34';ctx.stroke();ctx.fillStyle='#263b34';ctx.font='bold 25px system-ui';ctx.textAlign='center';ctx.fillText('GO',c,c+9);
+}
+function render(){
+ $('list').replaceChildren();items.forEach((name,i)=>{const li=document.createElement('li'),label=document.createElement('span'),button=document.createElement('button');label.textContent=name;button.textContent='×';button.className='delete';button.type='button';button.disabled=busy;button.setAttribute('aria-label','移除 '+name);button.onclick=()=>{if(busy)return;items.splice(i,1);angle=0;render()};li.append(label,button);$('list').append(li)});
+ if(!items.length){const li=document.createElement('li');li.textContent='還沒有選項，從上方加入吧！';li.className='empty';$('list').append(li)}
+ $('count').textContent=items.length+' 個';$('spin').disabled=busy||!items.length;$('item').disabled=busy;$('add').disabled=busy;$('remove').disabled=busy;
+ canvas.setAttribute('aria-label',items.length?'輪盤選項：'+items.join('、'):'目前沒有選項的輪盤');draw();
+}
+$('entry').addEventListener('submit',e=>{e.preventDefault();if(busy)return;const name=$('item').value.trim();if(!name){$('message').textContent='請先輸入一個選項。';return}if(items.includes(name)){$('message').textContent='這個選項已經在輪盤上囉。';return}if(items.length>=40){$('message').textContent='最多可以加入 40 個選項。';return}items.push(name);angle=0;$('item').value='';$('message').textContent='';render();$('item').focus()});
+function randomIndex(n){const a=new Uint32Array(1),limit=4294967296-(4294967296%n);do{crypto.getRandomValues(a)}while(a[0]>=limit);return a[0]%n}
+$('spin').addEventListener('click',()=>{
+ if(busy||!items.length)return;busy=true;const index=randomIndex(items.length),winner=items[index],remove=$('remove').checked;
+ const tau=Math.PI*2,step=tau/items.length,target=(tau-(index+.5)*step)%tau,start=angle,end=start+tau*5+((target-start%tau+tau)%tau);
+ const duration=matchMedia('(prefers-reduced-motion: reduce)').matches?100:3800;let began;
+ $('spin').textContent='轉動中…';$('result-label').textContent='好運正在路上';$('result').textContent='會是哪一個呢？';$('message').textContent='';render();
+ function frame(now){if(began===undefined)began=now;const t=Math.min((now-began)/duration,1);angle=start+(end-start)*(1-Math.pow(1-t,4));draw();if(t<1){requestAnimationFrame(frame);return}angle=target;$('result-label').textContent=remove?'本次抽中 · 已從輪盤移除':'本次抽中';$('result').textContent=winner;if(remove){items.splice(index,1);angle=0}busy=false;$('spin').textContent='再轉一次 ↗';render();if(!items.length)$('message').textContent='選項已抽完，加入新選項再玩一次！'}
+ requestAnimationFrame(frame);
+});
+render();
+</script>
+</body>
+</html>
